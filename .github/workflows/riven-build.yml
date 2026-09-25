@@ -1,0 +1,38 @@
+name: Build Riven V2bX
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-linux-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache: true
+
+      - name: Build sing-core Riven binary
+        env:
+          GOEXPERIMENT: jsonv2
+        run: |
+          mkdir -p build_assets
+          go build -v \
+            -o build_assets/V2bX-riven-linux-amd64 \
+            -tags "sing with_grpc with_utls with_gvisor" \
+            -trimpath \
+            -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=jimo-riven-v0.4.0-sing' -s -w -buildid="
+          file build_assets/V2bX-riven-linux-amd64
+          ./build_assets/V2bX-riven-linux-amd64 version
+          strings build_assets/V2bX-riven-linux-amd64 | grep -m 20 riven
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: V2bX-riven-linux-amd64
+          path: build_assets/V2bX-riven-linux-amd64
+          if-no-files-found: error
