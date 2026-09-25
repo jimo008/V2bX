@@ -335,6 +335,86 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			}
 		}
 		in.Options = trojanoption
+	case "riven":
+		n := info.Trojan
+		t := option.V2RayTransportOptions{
+			Type: n.Network,
+		}
+		switch n.Network {
+		case "tcp":
+			t.Type = ""
+		case "ws":
+			var (
+				path    string
+				ed      int
+				headers map[string]badoption.Listable[string]
+			)
+			if len(n.NetworkSettings) != 0 {
+				network := WsNetworkConfig{}
+				err := json.Unmarshal(n.NetworkSettings, &network)
+				if err != nil {
+					return option.Inbound{}, fmt.Errorf("decode Riven NetworkSettings error: %s", err)
+				}
+				var u *url.URL
+				u, err = url.Parse(network.Path)
+				if err != nil {
+					return option.Inbound{}, fmt.Errorf("parse Riven path error: %s", err)
+				}
+				path = u.Path
+				ed, _ = strconv.Atoi(u.Query().Get("ed"))
+				headers = make(map[string]badoption.Listable[string], len(network.Headers))
+				for k, v := range network.Headers {
+					headers[k] = badoption.Listable[string]{
+						v,
+					}
+				}
+			}
+			t.WebsocketOptions = option.V2RayWebsocketOptions{
+				Path:                path,
+				EarlyDataHeaderName: "Sec-WebSocket-Protocol",
+				MaxEarlyData:        uint32(ed),
+				Headers:             headers,
+			}
+		case "grpc":
+			network := GrpcNetworkConfig{}
+			if len(n.NetworkSettings) != 0 {
+				err := json.Unmarshal(n.NetworkSettings, &network)
+				if err != nil {
+					return option.Inbound{}, fmt.Errorf("decode Riven NetworkSettings error: %s", err)
+				}
+			}
+			t.GRPCOptions = option.V2RayGRPCOptions{
+				ServiceName: network.ServiceName,
+			}
+		default:
+			t.Type = ""
+		}
+		in.Type = "riven"
+		rivenoption := &option.RivenInboundOptions{
+			ListenOptions: listen,
+			InboundTLSOptionsContainer: option.InboundTLSOptionsContainer{
+				TLS: &tls,
+			},
+			Transport: &t,
+			Multiplex: multiplex,
+		}
+		if c.SingOptions.FallBackConfigs != nil {
+			// fallback handling
+			fallback := c.SingOptions.FallBackConfigs.FallBack
+			fallbackPort, err := strconv.Atoi(fallback.ServerPort)
+			if err == nil {
+				rivenoption.Fallback = &option.ServerOptions{
+					Server:     fallback.Server,
+					ServerPort: uint16(fallbackPort),
+				}
+			}
+			fallbackForALPNMap := c.SingOptions.FallBackConfigs.FallBackForALPN
+			fallbackForALPN := make(map[string]*option.ServerOptions, len(fallbackForALPNMap))
+			if err := processFallback(c, fallbackForALPN); err == nil {
+				rivenoption.FallbackForALPN = fallbackForALPN
+			}
+		}
+		in.Options = rivenoption
 	case "tuic":
 		in.Type = "tuic"
 		tls.ALPN = append(tls.ALPN, "h3")

@@ -226,6 +226,15 @@ func (c *Client) GetNodeInfo() (node *NodeInfo, err error) {
 		cm = &rsp.CommonNode
 		node.Trojan = rsp
 		node.Security = Tls
+	case "riven":
+		rsp := &TrojanNode{}
+		err = json.Unmarshal(r.Body(), rsp)
+		if err != nil {
+			return nil, fmt.Errorf("decode riven params error: %s", err)
+		}
+		cm = &rsp.CommonNode
+		node.Trojan = rsp
+		node.Security = Tls
 	case "tuic":
 		rsp := &TuicNode{}
 		err = json.Unmarshal(r.Body(), rsp)

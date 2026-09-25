@@ -11,6 +11,7 @@ import (
 	"github.com/sagernet/sing-box/protocol/anytls"
 	"github.com/sagernet/sing-box/protocol/hysteria"
 	"github.com/sagernet/sing-box/protocol/hysteria2"
+	"github.com/sagernet/sing-box/protocol/riven"
 	"github.com/sagernet/sing-box/protocol/shadowsocks"
 	"github.com/sagernet/sing-box/protocol/trojan"
 	"github.com/sagernet/sing-box/protocol/tuic"
@@ -73,6 +74,15 @@ func (b *Sing) AddUsers(p *core.AddUsersParams) (added int, err error) {
 			}
 		}
 		err = in.(*trojan.Inbound).AddUsers(us)
+	case "riven":
+		us := make([]option.RivenUser, len(p.Users))
+		for i := range p.Users {
+			us[i] = option.RivenUser{
+				Name:     p.Users[i].Uuid,
+				Password: p.Users[i].Uuid,
+			}
+		}
+		err = in.(*riven.Inbound).AddUsers(us)
 	case "tuic":
 		us := make([]option.TUICUser, len(p.Users))
 		id := make([]int, len(p.Users))
@@ -187,6 +197,8 @@ func (b *Sing) DelUsers(users []panel.UserInfo, tag string, info *panel.NodeInfo
 			del = i.(*shadowsocks.MultiInbound)
 		case "trojan":
 			del = i.(*trojan.Inbound)
+		case "riven":
+			del = i.(*riven.Inbound)
 		case "tuic":
 			del = i.(*tuic.Inbound)
 		case "hysteria":
