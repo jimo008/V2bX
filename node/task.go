@@ -172,7 +172,7 @@ func (c *Controller) nodeInfoMonitor() (err error) {
 		c.limiter.AliveList = newA
 	}
 	// node no changed, check users
-	if newU == nil {
+	if len(newU) == 0 {
 		return nil
 	}
 	deleted, added := compareUserList(c.userList, newU)
